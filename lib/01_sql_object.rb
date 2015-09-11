@@ -16,12 +16,15 @@ class SQLObject
 
   def self.finalize!
     columns.each do |col_name|
-      define_method(col_name) do
-        self.instance_variable_get(attributes[col_name])
-      end
+
       define_method("#{col_name}=") do |setter|
-        self.instance_variable_set(attributes[col_name], setter)
+        attributes[col_name] = setter
       end
+
+      define_method(col_name) do
+        attributes[col_name]
+      end
+
     end
   end
 
@@ -35,18 +38,41 @@ class SQLObject
   end
 
   def self.all
+    data = DBConnection.execute(<<-SQL)
+      SELECT
+        #{table_name}.*
+      FROM
+      #{table_name}
+    SQL
+    parse_all(data)
   end
 
   def self.parse_all(results)
-    # ...
+    results.map {|attributes| new(attributes)}
   end
 
   def self.find(id)
     # ...
+    data = DBConnection.execute(<<-SQL)
+      SELECT
+        #{table_name}.*
+      FROM
+      #{table_name}
+      WHERE
+        #{table_name}.id = #{id}
+      LIMIT
+        1
+    SQL
+    return nil if data.empty?
+    new(data.first)
   end
 
   def initialize(params = {})
-    # ...
+    params.each do |key, val|
+      key = key.to_sym
+      raise "unknown attribute '#{key}'" unless self.class.columns.include?(key)
+      send("#{key}=", val)
+    end
   end
 
   def attributes
@@ -56,17 +82,54 @@ class SQLObject
 
   def attribute_values
     # ...
+    self.class.columns.map { |key| send(key)}
   end
 
   def insert
     # ...
+    n = attribute_values.length
+
+    question_marks = Array.new(n, "?").join(", ")
+
+    col_names = self.class.columns.join(", ")
+
+    table_name = self.class.table_name
+
+    data = DBConnection.execute(<<-SQL, *attribute_values)
+      INSERT INTO
+      #{table_name} (#{col_names})
+      VALUES
+      ( #{question_marks} )
+    SQL
+
+    id = DBConnection.last_insert_row_id
+
+    attributes[:id] = id
   end
 
   def update
     # ...
+    table_name = self.class.table_name
+    col_names = self.class.columns.map{ |column| "#{column} = ?" }.join(", ")
+    id = "id = #{send(:id)}"
+    data = DBConnection.execute(<<-SQL, *attribute_values)
+      UPDATE
+      #{table_name}
+      SET
+       #{col_names}
+      WHERE
+      #{id}
+    SQL
+
   end
 
   def save
     # ...
+    id = send(:id)
+    if id.nil?
+      insert
+    else
+      update
+    end
   end
 end
