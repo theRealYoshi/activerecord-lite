@@ -102,9 +102,7 @@ class SQLObject
       ( #{question_marks} )
     SQL
 
-    id = DBConnection.last_insert_row_id
-
-    attributes[:id] = id
+    self.id = DBConnection.last_insert_row_id
   end
 
   def update
