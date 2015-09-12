@@ -1,5 +1,6 @@
 require_relative 'db_connection'
 require 'active_support/inflector'
+require 'byebug'
 # NB: the attr_accessor we wrote in phase 0 is NOT used in the rest
 # of this project. It was only a warm up.
 
@@ -48,27 +49,29 @@ class SQLObject
   end
 
   def self.parse_all(results)
-    results.map {|attributes| new(attributes)}
+    results.map {|attributes| self.new(attributes)}
   end
 
   def self.find(id)
     # ...
-    data = DBConnection.execute(<<-SQL)
+    data = DBConnection.execute(<<-SQL, id)
       SELECT
         #{table_name}.*
       FROM
       #{table_name}
       WHERE
-        #{table_name}.id = #{id}
+        #{table_name}.id = ?
       LIMIT
         1
     SQL
     return nil if data.empty?
+    debugger
     new(data.first)
   end
 
   def initialize(params = {})
     params.each do |key, val|
+      debugger
       key = key.to_sym
       raise "unknown attribute '#{key}'" unless self.class.columns.include?(key)
       send("#{key}=", val)
@@ -109,14 +112,14 @@ class SQLObject
     # ...
     table_name = self.class.table_name
     col_names = self.class.columns.map{ |column| "#{column} = ?" }.join(", ")
-    id = "id = #{send(:id)}"
+    where_id = "id = #{send(:id)}"
     data = DBConnection.execute(<<-SQL, *attribute_values)
       UPDATE
       #{table_name}
       SET
        #{col_names}
       WHERE
-      #{id}
+      #{where_id}
     SQL
 
   end

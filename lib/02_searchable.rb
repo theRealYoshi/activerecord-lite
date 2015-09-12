@@ -4,7 +4,7 @@ require_relative '01_sql_object'
 module Searchable
   def where(params)
 
-    table_name = self.table_name || self.to_s.tableize
+    table_name = self.table_name
 
     where = params.keys.map { |param| "#{param} = ?"}.join(" AND ")
     data = DBConnection.execute(<<-SQL, *params.values)
