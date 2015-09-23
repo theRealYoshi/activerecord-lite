@@ -65,13 +65,11 @@ class SQLObject
         1
     SQL
     return nil if data.empty?
-    debugger
     new(data.first)
   end
 
   def initialize(params = {})
     params.each do |key, val|
-      debugger
       key = key.to_sym
       raise "unknown attribute '#{key}'" unless self.class.columns.include?(key)
       send("#{key}=", val)
